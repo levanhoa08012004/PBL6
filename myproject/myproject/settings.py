@@ -121,9 +121,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+INSTALLED_APPS = [
+    # các app của bạn
+]
+
 MIDDLEWARE = [
-    'whitenoise.middleware.WhiteNoiseMiddleware',
-    # middleware khác
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # phục vụ static files
+    # các middleware khác
 ]
 
 STATIC_URL = '/static/'
