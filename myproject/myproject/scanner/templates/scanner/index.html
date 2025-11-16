@@ -1,0 +1,396 @@
+<!-- templates/scanner/index.html - COMPLETE VERSION -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SQL Scanner UI</title>
+    <style>
+        :root {
+            --bg: #0f1724;
+            --card: #1a2332;
+            --card-hover: #1f2937;
+            --muted: #94a3b8;
+            --accent: #06b6d4;
+            --accent-2: #7c3aed;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --border: rgba(255,255,255,0.08);
+            --glass: rgba(255,255,255,0.03);
+            --radius: 12px;
+            --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            --ui-font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            font-family: var(--ui-font);
+            background: linear-gradient(180deg, #071029 0%, var(--bg) 100%);
+            color: #e6eef6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+        header { margin-bottom: 32px; }
+        h1 { margin: 0 0 8px 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(135deg, #fff 0%, var(--muted) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .subtitle { color: var(--muted); font-size: 14px; }
+
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+        .panel { background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; box-shadow: 0 8px 32px rgba(2,6,23,0.6); }
+        .panel-title { font-size: 16px; font-weight: 600; margin: 0 0 20px 0; color: #f8fafc; display: flex; align-items: center; gap: 8px; }
+
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        input[type="text"], input[type="url"], select {
+            width: 100%; background: var(--card); border: 1px solid var(--border); color: #e6eef6; padding: 10px 12px; border-radius: 8px; outline: none; font-size: 14px; font-family: var(--ui-font); transition: all 0.2s;
+        }
+        input[type="text"]:focus, input[type="url"]:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1); }
+
+        .input-wrapper { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; transition: all 0.2s; }
+        .input-wrapper:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1); }
+        .input-wrapper input, .input-wrapper select { background: transparent; color: #fff; border: none; padding: 0; }
+        .input-wrapper input:focus, .input-wrapper select:focus { box-shadow: none; color: #06b6d4; }
+
+        .params-header { display: grid; grid-template-columns: 20px 1fr 1fr 40px; gap: 12px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; padding: 0 4px; }
+        .param-row { display: grid; grid-template-columns: 20px 1fr 1fr 40px; gap: 12px; margin-bottom: 8px; align-items: center; }
+        .checkbox-wrapper { display: flex; align-items: center; justify-content: center; }
+        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); }
+
+        .btn-remove { width: 32px; height: 32px; border-radius: 6px; background: transparent; border: 1px solid var(--border); color: var(--danger); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-size: 18px; }
+        .btn-remove:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--danger); }
+
+        .btn-add { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px dashed var(--border); color: var(--accent); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; margin-top: 8px; }
+        .btn-add:hover { background: rgba(6, 182, 212, 0.05); border-color: var(--accent); }
+
+        .actions { display: flex; gap: 12px; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+        button { flex: 1; cursor: pointer; border: none; padding: 12px 20px; border-radius: 10px; font-weight: 600; font-size: 14px; transition: all 0.15s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        button:active { transform: translateY(1px); }
+        .btn-primary { background: linear-gradient(135deg, var(--accent-2), #5b21b6); color: white; }
+        .btn-primary:hover { box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4); }
+        .btn-secondary { background: linear-gradient(135deg, var(--accent), #0891b2); color: white; }
+        .btn-secondary:hover { box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4); }
+
+        #log { font-family: var(--mono); background: #000; color: #00ff00; padding: 16px; height: 550px; overflow: auto; border-radius: 10px; border: 1px solid var(--border); white-space: pre-wrap; line-height: 1.5; font-size: 13px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.5); }
+        #log::-webkit-scrollbar { width: 8px; }
+        #log::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+        #log::-webkit-scrollbar-thumb { background: rgba(0,255,0,0.3); border-radius: 4px; }
+
+        #summary { font-family: var(--mono); white-space: pre-wrap; color: #e6eef6; font-size: 13px; min-height: 100px; }
+        .summary-block { margin-bottom: 16px; padding: 16px; border-radius: 10px; background: var(--card); border: 1px solid var(--border); }
+        .summary-block.vulnerable { border-left: 4px solid var(--danger); }
+        .summary-block.safe { border-left: 4px solid var(--success); }
+        .summary-title { font-weight: 600; margin-bottom: 12px; font-size: 14px; }
+        .summary-info { font-size: 13px; line-height: 1.6; color: var(--muted); }
+        .summary-controls { margin-top: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .summary-controls label { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 12px; }
+        .summary-controls select { padding: 6px 10px; font-size: 12px; width: auto; }
+        .summary-controls button { padding: 6px 12px; font-size: 12px; flex: none; }
+
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-danger { background: var(--danger); color: white; }
+        .badge-success { background: var(--success); color: white; }
+
+        @media (max-width: 1200px) { .main-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) {
+            .param-row { grid-template-columns: 40px 1fr; gap: 8px; }
+            .param-row .param-value, .param-row .param-type, .param-row .btn-remove { grid-column: 2; }
+            .params-header { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Blind SQL Scanner</h1>
+        </header>
+
+        <div class="main-grid">
+            <!-- Left Column: Form -->
+            <div>
+                <div class="panel">
+                    <h2 class="panel-title">Configuration</h2>
+                    
+                    <form id="scan-form" method="post" action="{% url 'scanner:index' %}">
+                        {% csrf_token %}
+
+                        <div class="form-group">
+                            <label for="target_url">Target URL</label>
+                            <div class="input-wrapper">
+                                <input type="url" id="target_url" name="target_url" 
+                                       placeholder="https://example.com/api/endpoint" required
+                                       value="{{ target_url|default:'' }}">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="request_method">Request Method</label>
+                            <div class="input-wrapper">
+                                <select id="request_method" name="request_method">
+                                    <option value="GET" {% if request_method == 'GET' %}selected{% endif %}>GET</option>
+                                    <option value="POST" {% if request_method == 'POST' %}selected{% endif %}>POST</option>
+                                    <option value="PUT" {% if request_method == 'PUT' %}selected{% endif %}>PUT</option>
+                                    <option value="DELETE" {% if request_method == 'DELETE' %}selected{% endif %}>DELETE</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Parameters -->
+                        <div class="form-group">
+                            <label>Parameters</label>
+                            <div class="params-header">
+                                <div></div><div>Key</div><div>Value</div>
+                            </div>
+                            <div id="params-container"></div>
+                            <button type="button" class="btn-add" onclick="addParamRow()">+ Add Parameter</button>
+                        </div>
+
+                        <!-- Cookies -->
+                        <div class="form-group">
+                            <label>Cookies (optional)</label>
+                            <div class="params-header">
+                                <div></div><div>Key</div><div>Value</div>
+                            </div>
+                            <div id="cookies-container"></div>
+                            <button type="button" class="btn-add" onclick="addCookieRow()">+ Add Cookie</button>
+                        </div>
+
+                        <div class="actions">
+                            <button type="button" class="btn-secondary" id="run-stream">Run Scan (Stream)</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Right Column: Logs & Summary -->
+            <div>
+                <div class="panel" style="margin-bottom: 24px;">
+                    <h2 class="panel-title">Logs</h2>
+                    <pre id="log"></pre>
+                </div>
+
+                <div class="panel">
+                    <h2 class="panel-title">Summary</h2>
+                    <div id="summary"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let paramIndex = 0, cookieIndex = 0;
+
+        function addParamRow(key = '', value = '', checked = true) {
+            const container = document.getElementById('params-container');
+            const row = document.createElement('div');
+            row.className = 'param-row';
+            row.innerHTML = `
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="param_checked_${paramIndex}" ${checked ? 'checked' : ''}>
+                </div>
+                <input type="text" name="param_key_${paramIndex}" class="param-key" placeholder="key" value="${key}">
+                <input type="text" name="param_value_${paramIndex}" class="param-value" placeholder="value" value="${value}">
+                
+                <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
+            `;
+            container.appendChild(row);
+            paramIndex++;
+        }
+
+        function addCookieRow(key = '', value = '') {
+            const container = document.getElementById('cookies-container');
+            const row = document.createElement('div');
+            row.className = 'param-row';
+            row.innerHTML = `
+                <div></div>
+                <input type="text" name="cookie_key_${cookieIndex}" placeholder="key" value="${key}">
+                <input type="text" name="cookie_value_${cookieIndex}" placeholder="value" value="${value}">
+                
+                <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
+            `;
+            container.appendChild(row);
+            cookieIndex++;
+        }
+
+        // Load initial data
+        addParamRow();
+
+        // === STREAM SCAN ===
+        document.getElementById('run-stream').addEventListener('click', function () {
+            const form = document.getElementById('scan-form');
+            const formData = new FormData(form);
+            formData.append('stream', '1');
+
+            const logEl = document.getElementById('log');
+            logEl.textContent = '';
+            document.getElementById('summary').innerHTML = '';
+
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                function read() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) return;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+                        lines.forEach(line => {
+                            if (line) appendLog(line);
+                            try {
+                                const data = JSON.parse(line);
+                                if (data.__done__ && data.results) {
+                                    displayResults(data.results);
+                                }
+                            } catch (e) {}
+                        });
+                        read();
+                    });
+                }
+                read();
+            })
+            .catch(err => appendLog('\n[ERROR] ' + err.message + '\n'));
+        });
+
+        function appendLog(text) {
+            const logEl = document.getElementById('log');
+            logEl.textContent += text + '\n';
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function displayResults(results) {
+            const summaryEl = document.getElementById('summary');
+            summaryEl.innerHTML = '';
+
+            results.forEach(r => {
+                const boolDetections = r.boolean || [];
+                const timeDetections = r.time_based || [];
+
+                const block = document.createElement('div');
+                block.className = 'summary-block ' + ((boolDetections.length + timeDetections.length > 0) ? 'vulnerable' : 'safe');
+
+                const title = document.createElement('div');
+                title.className = 'summary-title';
+                title.innerHTML = (boolDetections.length + timeDetections.length > 0)
+                    ? `<span class="badge badge-danger">VULNERABLE</span> Parameter: <code>${r.param}</code>`
+                    : `<span class="badge badge-success">SAFE</span> Parameter: <code>${r.param}</code>`;
+                block.appendChild(title);
+
+                if (boolDetections.length + timeDetections.length > 0) {
+                    const info = document.createElement('div');
+                    info.className = 'summary-info';
+                    info.innerHTML = `
+                        • Boolean-based: ${boolDetections.length} detection(s)<br>
+                        • Time-based: ${timeDetections.length} detection(s)
+                    `;
+                    block.appendChild(info);
+
+                    const detectionList = document.createElement('div');
+                    detectionList.style.marginTop = '12px';
+                    detectionList.style.fontSize = '12px';
+                    detectionList.style.color = '#94a3b8';
+
+                    boolDetections.forEach((det, i) => {
+                        const div = document.createElement('div');
+                        div.style.marginBottom = '8px';
+                        div.style.padding = '8px';
+                        div.style.background = 'rgba(6, 182, 212, 0.1)';
+                        div.style.borderRadius = '6px';
+                        div.innerHTML = `
+                            <strong>[BOOLEAN #${i+1}]</strong> ${det.payload_desc}<br>
+                            <small>Tamper: <code>${det.tamper}</code> | DB: ${det.db_hints.join(', ')}</small><br>
+                            <small style="color: #f59e0b;">SHA: ${det.true_sha}</small>
+                        `;
+                        detectionList.appendChild(div);
+                    });
+
+                    timeDetections.forEach((det, i) => {
+                        const div = document.createElement('div');
+                        div.style.marginBottom = '8px';
+                        div.style.padding = '8px';
+                        div.style.background = 'rgba(34, 197, 94, 0.1)';
+                        div.style.borderRadius = '6px';
+                        div.innerHTML = `
+                            <strong>[TIME #${i+1}]</strong> ${det.db_template} (diff: ${det.time_diff}s)<br>
+                            <small>Tamper: <code>${det.tamper}</code> | DB: ${det.db_hints.join(', ')}</small>
+                        `;
+                        detectionList.appendChild(div);
+                    });
+
+                    block.appendChild(detectionList);
+
+                    const controls = document.createElement('div');
+                    controls.className = 'summary-controls';
+                    controls.style.marginTop = '16px';
+                    controls.style.gap = '8px';
+                    controls.style.flexWrap = 'wrap';
+
+                    [...boolDetections, ...timeDetections].forEach((det, idx) => {
+                        const isTime = 'time_diff' in det;
+                        const btn = document.createElement('button');
+                        btn.className = isTime ? 'btn-secondary' : 'btn-primary';
+                        btn.style.fontSize = '12px';
+                        btn.style.padding = '6px 10px';
+                        btn.textContent = isTime ? `Dump Tables (Time #${idx+1})` : `Dump Tables (Bool #${idx+1})`;
+                        btn.onclick = () => dumpTablesWithDetection(r.param, det, isTime ? 'time' : 'boolean');
+                        controls.appendChild(btn);
+                    });
+
+                    block.appendChild(controls);
+                }
+                summaryEl.appendChild(block);
+            });
+        }
+
+        function dumpTablesWithDetection(paramName, detection, method) {
+            const form = document.getElementById('scan-form');
+            const formData = new FormData(form);
+            const params = {};
+            let i = 0;
+            while (true) {
+                const key = formData.get(`param_key_${i}`);
+                const val = formData.get(`param_value_${i}`);
+                if (key === null) break;
+                if (key) params[key] = val || '';
+                i++;
+            }
+
+            // Collect cookies
+            const cookies = {};
+            i = 0;
+            while (true) {
+                const key = formData.get(`cookie_key_${i}`);
+                const val = formData.get(`cookie_value_${i}`);
+                if (key === null) break;
+                if (key) cookies[key] = val || '';
+                i++;
+            }
+
+            const data = {
+                target_url: formData.get('target_url'),
+                default_params: JSON.stringify(params),
+                request_method: formData.get('request_method'),
+                param_name: paramName,
+                tamper: detection.tamper,
+                db_type: detection.db_hints[0] || 'MySQL',
+                method: method,
+                cookies: JSON.stringify(cookies),
+                headers: JSON.stringify({}),
+                true_sha: detection.true_sha || ''
+            };
+
+            const url = '{% url "scanner:dump_tables" %}' + '?' + new URLSearchParams(data);
+            window.open(url, '_blank');
+        }
+    </script>
+</body>
+</html>

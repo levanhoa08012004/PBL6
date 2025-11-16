@@ -1,0 +1,367 @@
+<!-- templates/scanner/dump_tables.html - COMPLETE VERSION -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dump Tables</title>
+    <style>
+        :root { --bg: #0f1724; --card: #1a2332; --accent: #06b6d4; --success: #22c55e; --danger: #ef4444; --border: rgba(255,255,255,0.08); --radius: 12px; --mono: "SFMono-Regular", Consolas, monospace; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: system-ui; background: var(--bg); color: #e6eef6; padding: 24px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { font-size: 24px; margin: 0 0 8px; }
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+        .btn { padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+        .btn-primary { background: linear-gradient(135deg, #7c3aed, #5b21b6); color: white; }
+        .btn-primary:hover { box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4); }
+        .btn-success { background: linear-gradient(135deg, #22c55e, #16a34a); color: white; }
+        .btn-success:hover { box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4); }
+        .btn-secondary { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; }
+        .btn-secondary:hover { box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #log { background: #000; color: #00ff00; padding: 16px; height: 300px; overflow: auto; border-radius: 8px; font-family: var(--mono); font-size: 13px; white-space: pre-wrap; }
+        .list { list-style: none; padding: 0; margin: 0; }
+        .item { padding: 12px; background: rgba(255,255,255,0.05); margin-bottom: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; border: 2px solid transparent; }
+        .item:hover { background: rgba(255,255,255,0.08); }
+        .item.selected { background: rgba(6, 182, 212, 0.15); border-color: var(--accent); }
+        .name { font-family: var(--mono); flex: 1; }
+        .select-input { width: 100%; padding: 10px; margin-bottom: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #e6eef6; font-size: 14px; }
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        .data-table th, .data-table td { padding: 10px; border: 1px solid var(--border); text-align: left; }
+        .data-table th { background: rgba(255,255,255,0.05); font-weight: 600; }
+        .data-table td { font-family: var(--mono); font-size: 12px; }
+        .info-badge { display: inline-block; padding: 4px 8px; background: rgba(6, 182, 212, 0.2); border-radius: 4px; font-size: 12px; margin-right: 8px; }
+        .section-title { font-size: 18px; font-weight: 600; margin-bottom: 12px; color: #f8fafc; }
+        .hidden { display: none; }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; padding: 8px; margin-bottom: 4px; background: rgba(255,255,255,0.03); border-radius: 6px; }
+        .checkbox-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); }
+        .action-bar { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗂️ Dump Tables</h1>
+        
+        <div class="panel">
+            <strong>Target:</strong> <code>{{ target_url }}</code><br>
+            <strong>Parameter:</strong> <code>{{ param_name }}</code><br>
+            <strong>Database:</strong> <span class="info-badge">{{ db_type }}</span>
+            <strong>Method:</strong> <span class="info-badge">{{ method }}</span>
+            <strong>Tamper:</strong> <span class="info-badge">{{ tamper }}</span><br>
+            <strong>SHA Hash:</strong> <code style="color: #f59e0b;">{{ true_sha }}</code>
+        </div>
+
+        <div class="panel">
+            <button id="start-tables" class="btn btn-primary">🚀 Start Dump Tables</button>
+        </div>
+
+        <div class="panel">
+            <h3 class="section-title">📜 Live Log</h3>
+            <pre id="log"></pre>
+        </div>
+
+        <div class="panel" id="tables-panel" style="display: none;">
+            <h3 class="section-title">📊 Tables Found (<span id="table-count">0</span>)</h3>
+            <ul id="tables" class="list"></ul>
+        </div>
+
+        <div class="panel" id="columns-panel" style="display: none;">
+            <h3 class="section-title">🔍 Columns for: <code id="selected-table"></code></h3>
+            <div id="columns" class="list"></div>
+            <div class="action-bar">
+                <button class="btn btn-success" onclick="selectAllColumns()">✓ Select All</button>
+                <button class="btn btn-secondary" onclick="deselectAllColumns()">✗ Deselect All</button>
+                <button class="btn btn-primary" onclick="dumpData()">💾 Dump Data</button>
+            </div>
+        </div>
+
+        <div class="panel" id="data-panel" style="display: none;">
+            <h3 class="section-title">📁 Data from: <code id="selected-table-data"></code></h3>
+            <div style="margin-bottom: 12px;">
+                <strong>Rows:</strong> <span id="row-count">0</span>
+            </div>
+            <div style="overflow-x: auto;">
+                <table id="data-table" class="data-table">
+                    <thead id="data-head"></thead>
+                    <tbody id="data-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTable = '';
+        let allColumns = [];
+
+        function startDump() {
+            const fd = new FormData();
+            fd.append('target_url', `{{ target_url|escapejs }}`);
+            fd.append('default_params', `{{ default_params|escapejs }}`);
+            fd.append('request_method', `{{ request_method|escapejs }}`);
+            fd.append('param_name', `{{ param_name|escapejs }}`);
+            fd.append('tamper', `{{ tamper|escapejs }}`);
+            fd.append('db_type', `{{ db_type|escapejs }}`);
+            fd.append('method', `{{ method|escapejs }}`);
+            fd.append('cookies', `{{ cookies|escapejs }}`);
+            fd.append('headers', `{{ headers|escapejs }}`);
+            fd.append('true_sha', `{{ true_sha|escapejs }}`);
+            
+            const log = document.getElementById('log'); 
+            log.textContent = '[START] Dumping tables...\n';
+
+            fetch('', { 
+                method: 'POST', 
+                body: fd, 
+                headers: { 'X-Requested-With': 'XMLHttpRequest' } 
+            })
+            .then(r => r.body.getReader())
+            .then(reader => {
+                const decoder = new TextDecoder(); 
+                let buffer = '';
+                
+                const read = () => reader.read().then(({done, value}) => {
+                    if (done) return;
+                    buffer += decoder.decode(value, {stream: true});
+                    const lines = buffer.split('\n'); 
+                    buffer = lines.pop();
+                    
+                    lines.forEach(line => {
+                        if (line) {
+                            log.textContent += line + '\n'; 
+                            log.scrollTop = log.scrollHeight;
+                        }
+                        try {
+                            const data = JSON.parse(line);
+                            if (data.__done__ && data.tables) {
+                                displayTables(data.tables);
+                            }
+                        } catch {}
+                    });
+                    read();
+                });
+                read();
+            })
+            .catch(err => {
+                log.textContent += `\n[ERROR] ${err.message}\n`;
+            });
+        }
+
+        document.getElementById('start-tables').addEventListener('click', startDump);
+
+        function displayTables(tables) {
+            const panel = document.getElementById('tables-panel');
+            const ul = document.getElementById('tables');
+            const count = document.getElementById('table-count');
+            
+            panel.style.display = 'block';
+            count.textContent = tables.length;
+            ul.innerHTML = '';
+            
+            if (!tables.length) {
+                ul.innerHTML = '<li class="item">No tables found.</li>';
+                return;
+            }
+            
+            tables.forEach(t => {
+                const li = document.createElement('li'); 
+                li.className = 'item';
+                li.innerHTML = `
+                    <span class="name">📦 ${t}</span>
+                    <button class="btn btn-primary" onclick="dumpColumns('${t}')">View Columns →</button>
+                `;
+                ul.appendChild(li);
+            });
+        }
+
+        function dumpColumns(table) {
+            currentTable = table;
+            allColumns = [];
+            
+            const panel = document.getElementById('columns-panel');
+            const title = document.getElementById('selected-table');
+            const container = document.getElementById('columns');
+            
+            panel.style.display = 'block';
+            title.textContent = table;
+            container.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8;">Loading columns...</div>';
+            
+            document.getElementById('data-panel').style.display = 'none';
+            
+            const fd = new FormData();
+            fd.append('target_url', `{{ target_url|escapejs }}`);
+            fd.append('default_params', `{{ default_params|escapejs }}`);
+            fd.append('request_method', `{{ request_method|escapejs }}`);
+            fd.append('param_name', `{{ param_name|escapejs }}`);
+            fd.append('table', table);
+            fd.append('tamper', `{{ tamper|escapejs }}`);
+            fd.append('db_type', `{{ db_type|escapejs }}`);
+            fd.append('method', `{{ method|escapejs }}`);
+            fd.append('cookies', `{{ cookies|escapejs }}`);
+            fd.append('headers', `{{ headers|escapejs }}`);
+            fd.append('true_sha', `{{ true_sha|escapejs }}`);
+            
+            fetch('{% url "scanner:dump_columns" %}', { 
+                method: 'POST', 
+                body: fd, 
+                headers: { 'X-Requested-With': 'XMLHttpRequest' } 
+            })
+            .then(r => r.body.getReader())
+            .then(reader => {
+                const decoder = new TextDecoder(); 
+                let buffer = '';
+                
+                const read = () => reader.read().then(({done, value}) => {
+                    if (done) return;
+                    buffer += decoder.decode(value, {stream: true});
+                    const lines = buffer.split('\n'); 
+                    buffer = lines.pop();
+                    
+                    lines.forEach(line => {
+                        if (line) {
+                            const log = document.getElementById('log');
+                            log.textContent += line + '\n'; 
+                            log.scrollTop = log.scrollHeight;
+                        }
+                        try {
+                            const data = JSON.parse(line);
+                            if (data.__done__ && data.columns) {
+                                displayColumns(data.columns);
+                            }
+                        } catch {}
+                    });
+                    read();
+                });
+                read();
+            });
+        }
+
+        function displayColumns(columns) {
+            allColumns = columns;
+            const container = document.getElementById('columns');
+            container.innerHTML = '';
+            
+            if (!columns.length) {
+                container.innerHTML = '<div class="item">No columns found.</div>';
+                return;
+            }
+            
+            columns.forEach((col, idx) => {
+                const div = document.createElement('div'); 
+                div.className = 'checkbox-item';
+                div.innerHTML = `
+                    <input type="checkbox" id="col_${idx}" value="${col}" checked>
+                    <label for="col_${idx}" style="cursor: pointer; flex: 1;">🔹 ${col}</label>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function selectAllColumns() {
+            document.querySelectorAll('#columns input[type="checkbox"]').forEach(cb => cb.checked = true);
+        }
+
+        function deselectAllColumns() {
+            document.querySelectorAll('#columns input[type="checkbox"]').forEach(cb => cb.checked = false);
+        }
+
+        function dumpData() {
+            const selected = [];
+            document.querySelectorAll('#columns input[type="checkbox"]:checked').forEach(cb => {
+                selected.push(cb.value);
+            });
+            
+            if (!selected.length) {
+                alert('Please select at least one column');
+                return;
+            }
+            
+            const panel = document.getElementById('data-panel');
+            const title = document.getElementById('selected-table-data');
+            
+            panel.style.display = 'block';
+            title.textContent = currentTable;
+            
+            document.getElementById('data-head').innerHTML = '';
+            document.getElementById('data-body').innerHTML = '';
+            document.getElementById('row-count').textContent = 'Loading...';
+            
+            const fd = new FormData();
+            fd.append('target_url', `{{ target_url|escapejs }}`);
+            fd.append('default_params', `{{ default_params|escapejs }}`);
+            fd.append('request_method', `{{ request_method|escapejs }}`);
+            fd.append('param_name', `{{ param_name|escapejs }}`);
+            fd.append('table', currentTable);
+            fd.append('columns', selected.join(','));
+            fd.append('tamper', `{{ tamper|escapejs }}`);
+            fd.append('db_type', `{{ db_type|escapejs }}`);
+            fd.append('method', `{{ method|escapejs }}`);
+            fd.append('cookies', `{{ cookies|escapejs }}`);
+            fd.append('headers', `{{ headers|escapejs }}`);
+            fd.append('true_sha', `{{ true_sha|escapejs }}`);
+            
+            fetch('{% url "scanner:dump_data" %}', { 
+                method: 'POST', 
+                body: fd, 
+                headers: { 'X-Requested-With': 'XMLHttpRequest' } 
+            })
+            .then(r => r.body.getReader())
+            .then(reader => {
+                const decoder = new TextDecoder(); 
+                let buffer = '';
+                
+                const read = () => reader.read().then(({done, value}) => {
+                    if (done) return;
+                    buffer += decoder.decode(value, {stream: true});
+                    const lines = buffer.split('\n'); 
+                    buffer = lines.pop();
+                    
+                    lines.forEach(line => {
+                        if (line) {
+                            const log = document.getElementById('log');
+                            log.textContent += line + '\n'; 
+                            log.scrollTop = log.scrollHeight;
+                        }
+                        try {
+                            const data = JSON.parse(line);
+                            if (data.__done__ && data.rows) {
+                                displayData(data.rows, data.columns);
+                            }
+                        } catch {}
+                    });
+                    read();
+                });
+                read();
+            });
+        }
+
+        function displayData(rows, columns) {
+        const head = document.getElementById('data-head');
+        const body = document.getElementById('data-body');
+        const rowCount = document.getElementById('row-count');
+        
+        rowCount.textContent = rows.length;
+        
+        // Header
+        const trHead = document.createElement('tr');
+        columns.forEach(col => {
+            const th = document.createElement('th');
+            th.textContent = col;
+            trHead.appendChild(th);
+        });
+        head.appendChild(trHead);
+
+        // Rows
+        rows.forEach((row, idx) => {
+            const tr = document.createElement('tr');
+            columns.forEach(col => {  // Sửa: iterate qua columns, lấy row[col]
+                const td = document.createElement('td');
+                td.textContent = row[col] || '(null)';
+                tr.appendChild(td);
+            });
+            body.appendChild(tr);
+        });
+    }
+    </script>
+</body>
+</html>
