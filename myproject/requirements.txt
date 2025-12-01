@@ -84,7 +84,7 @@ optree==0.14.0
 packaging==24.2
 pandas==2.2.3
 parso==0.8.4
-pillow==10.2.0
+pillow==9.5.0
 platformdirs==4.3.7
 preprocessing==0.1.13
 prompt_toolkit==3.0.50
