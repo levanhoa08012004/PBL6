@@ -65,11 +65,12 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 
 # SỬA HOÀN TOÀN: Cấu hình CSDL để đọc biến môi trường DATABASE_URL của Render.
 # Nếu biến không tồn tại (chạy cục bộ), nó sẽ quay về dùng SQLite.
+# Trong settings.py
 DATABASES = {
     'default': dj_database_url.config(
         default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
         conn_max_age=600,
-        conn_health_check=True
+        conn_health_checks=True # ĐÃ SỬA: Thêm chữ 's'
     )
 }
 
