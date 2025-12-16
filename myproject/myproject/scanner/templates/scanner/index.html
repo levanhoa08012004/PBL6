@@ -160,6 +160,7 @@
 
                         <div class="actions">
                             <button type="button" class="btn-secondary" id="run-stream">Run Scan (Stream)</button>
+                            <button type="button" class="btn-primary" id="export-results" disabled title="Export last scan results to a JSON file">Export Results</button>
                         </div>
                     </form>
                 </div>
@@ -182,6 +183,7 @@
 
     <script>
         let paramIndex = 0, cookieIndex = 0;
+        let _lastResults = null;
 
         function addParamRow(key = '', value = '', checked = true) {
             const container = document.getElementById('params-container');
@@ -270,6 +272,9 @@
         function displayResults(results) {
             const summaryEl = document.getElementById('summary');
             summaryEl.innerHTML = '';
+            // Store results for export
+            _lastResults = results;
+            document.getElementById('export-results').disabled = false;
 
             results.forEach(r => {
                 const boolDetections = r.boolean || [];
@@ -350,6 +355,20 @@
                 summaryEl.appendChild(block);
             });
         }
+
+        document.getElementById('export-results').addEventListener('click', function () {
+            if (!_lastResults) return alert('No results to export');
+            const filename = 'scan_results_' + new Date().toISOString().replace(/[:\.]/g, '-') + '.json';
+            const blob = new Blob([JSON.stringify(_lastResults, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        });
 
         function dumpTablesWithDetection(paramName, detection, method) {
             const form = document.getElementById('scan-form');

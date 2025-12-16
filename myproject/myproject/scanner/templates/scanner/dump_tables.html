@@ -63,7 +63,10 @@
 
         <div class="panel" id="tables-panel" style="display: none;">
             <h3 class="section-title">📊 Tables Found (<span id="table-count">0</span>)</h3>
-            <ul id="tables" class="list"></ul>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <div style="flex:1"><ul id="tables" class="list" style="margin:0;padding:0;"></ul></div>
+                <div style="margin-left:12px;"><button id="export-tables" class="btn btn-secondary" disabled>Export Tables</button></div>
+            </div>
         </div>
 
         <div class="panel" id="columns-panel" style="display: none;">
@@ -86,6 +89,10 @@
                     <thead id="data-head"></thead>
                     <tbody id="data-body"></tbody>
                 </table>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+                <button id="export-data-json" class="btn btn-primary" disabled>Export Data (JSON)</button>
+                <button id="export-data-csv" class="btn btn-secondary" disabled>Export Data (CSV)</button>
             </div>
         </div>
     </div>
@@ -149,6 +156,9 @@
 
         document.getElementById('start-tables').addEventListener('click', startDump);
 
+        let _lastTables = [];
+        let _lastRows = [];
+
         function displayTables(tables) {
             const panel = document.getElementById('tables-panel');
             const ul = document.getElementById('tables');
@@ -158,6 +168,9 @@
             count.textContent = tables.length;
             ul.innerHTML = '';
             
+            _lastTables = tables || [];
+            document.getElementById('export-tables').disabled = _lastTables.length === 0;
+
             if (!tables.length) {
                 ul.innerHTML = '<li class="item">No tables found.</li>';
                 return;
@@ -172,6 +185,14 @@
                 `;
                 ul.appendChild(li);
             });
+            // export handler
+            document.getElementById('export-tables').onclick = function () {
+                if (!_lastTables || !_lastTables.length) return alert('No tables to export');
+                const filename = 'tables_' + new Date().toISOString().replace(/[:\.]/g, '-') + '.json';
+                const blob = new Blob([JSON.stringify(_lastTables, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+            };
         }
 
         function dumpColumns(table) {
@@ -341,6 +362,9 @@
         const rowCount = document.getElementById('row-count');
         
         rowCount.textContent = rows.length;
+        _lastRows = rows || [];
+        document.getElementById('export-data-json').disabled = _lastRows.length === 0;
+        document.getElementById('export-data-csv').disabled = _lastRows.length === 0;
         
         // Header
         const trHead = document.createElement('tr');
@@ -361,6 +385,26 @@
             });
             body.appendChild(tr);
         });
+        // Export JSON handler
+        document.getElementById('export-data-json').onclick = function () {
+            if (!_lastRows || !_lastRows.length) return alert('No data to export');
+            const filename = (currentTable || 'data') + '_' + new Date().toISOString().replace(/[:\.]/g, '-') + '.json';
+            const blob = new Blob([JSON.stringify({table: currentTable, columns: columns, rows: _lastRows}, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        };
+        // Export CSV handler
+        document.getElementById('export-data-csv').onclick = function () {
+            if (!_lastRows || !_lastRows.length) return alert('No data to export');
+            const cols = columns;
+            const csvRows = [cols.join(',')];
+            _lastRows.forEach(r => {
+                const row = cols.map(c => '"' + String(r[c] || '').replace(/"/g, '""') + '"').join(',');
+                csvRows.push(row);
+            });
+            const csv = csvRows.join('\n');
+            const filename = (currentTable || 'data') + '_' + new Date().toISOString().replace(/[:\.]/g, '-') + '.csv';
+            const blob = new Blob([csv], { type: 'text/csv' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        };
     }
     </script>
 </body>
