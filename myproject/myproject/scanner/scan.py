@@ -8,6 +8,7 @@ from collections import Counter
 from datetime import datetime
 import json
 import re
+import os
 
 # Log levels with clearer icons (text only, no colors)
 def _format_log(level, msg):
@@ -49,9 +50,11 @@ MSSQL_DELAY = 5
 ORACLE_DELAY = 5
 SQLITE_DELAY = 3
 TIME_THRESHOLD = 3.0
-REQUEST_TIMEOUT = 15
+# Increase timeout for Render environment (default 30s, can be overridden)
+REQUEST_TIMEOUT = int(os.getenv('REQUEST_TIMEOUT', '30'))
 RETRIES = 5
 SLEEP_BETWEEN = 0.1
+RETRY_BACKOFF = 1.5  # Exponential backoff multiplier
 MAX_TABLES = 2
 MAX_COLUMNS = 5
 MAX_ROW = 5
@@ -159,7 +162,8 @@ def safe_mean(values):
     valid = [v for v in values if v is not None]
     return mean(valid) if valid else None
 
-def make_request(session, target_url, params, http_method, timeout=REQUEST_TIMEOUT):
+def make_request(session, target_url, params, http_method, timeout=REQUEST_TIMEOUT, retry_count=0):
+    """Make HTTP request with retry logic and SSL handling for Render environment."""
     http_method = http_method.upper()
     templated = '{' in target_url and '}' in target_url
     if templated:
@@ -180,16 +184,29 @@ def make_request(session, target_url, params, http_method, timeout=REQUEST_TIMEO
         headers = {}
         if http_method in ['POST', 'PUT']:
             headers["Content-Type"] = "application/json"
-            response = session.request(http_method, current_url, json=query_body_params, timeout=timeout, allow_redirects=True, headers=headers)
+            # Disable SSL verification for Render environment
+            response = session.request(http_method, current_url, json=query_body_params, timeout=timeout, 
+                                      allow_redirects=True, headers=headers, verify=False)
         else:
-            response = session.request(http_method, current_url, params=query_body_params, timeout=timeout, allow_redirects=True, headers=headers)
+            response = session.request(http_method, current_url, params=query_body_params, timeout=timeout, 
+                                      allow_redirects=True, headers=headers, verify=False)
         elapsed = time.time() - start_time
         return response.text, elapsed, response.status_code
     except requests.Timeout:
         elapsed = time.time() - start_time
+        if retry_count < RETRIES:
+            wait_time = (RETRY_BACKOFF ** retry_count) * SLEEP_BETWEEN
+            _log(f"Timeout (retry {retry_count+1}/{RETRIES}, waiting {wait_time:.1f}s)", "WARN")
+            time.sleep(wait_time)
+            return make_request(session, target_url, params, http_method, timeout, retry_count + 1)
         return None, elapsed, None
-    except requests.RequestException as e:
+    except (requests.RequestException, requests.exceptions.SSLError) as e:
         _log(f"Request error: {str(e)}", "ERROR")
+        if retry_count < RETRIES:
+            wait_time = (RETRY_BACKOFF ** retry_count) * SLEEP_BETWEEN
+            _log(f"Retrying ({retry_count+1}/{RETRIES}) after {wait_time:.1f}s", "WARN")
+            time.sleep(wait_time)
+            return make_request(session, target_url, params, http_method, timeout, retry_count + 1)
         return None, None, None
 
 # ================== GENERAL EXTRACTION FUNCTIONS ==================
