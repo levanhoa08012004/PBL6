@@ -1,4 +1,3 @@
-# scan.py - EXTENDED VERSION: SUPPORT FOR MYSQL, POSTGRESQL, MSSQL, ORACLE, SQLITE
 import time
 import hashlib
 import urllib.parse
@@ -10,7 +9,6 @@ import json
 import re
 import os
 
-# Log levels with clearer icons (text only, no colors)
 def _format_log(level, msg):
     timestamp = datetime.now().strftime("%H:%M:%S")
     icons = {
@@ -50,11 +48,10 @@ MSSQL_DELAY = 5
 ORACLE_DELAY = 5
 SQLITE_DELAY = 3
 TIME_THRESHOLD = 3.0
-# Increase timeout for Render environment (default 30s, can be overridden)
 REQUEST_TIMEOUT = int(os.getenv('REQUEST_TIMEOUT', '30'))
 RETRIES = 5
 SLEEP_BETWEEN = 0.1
-RETRY_BACKOFF = 1.5  # Exponential backoff multiplier
+RETRY_BACKOFF = 1.5 
 MAX_TABLES = 2
 MAX_COLUMNS = 5
 MAX_ROW = 5
